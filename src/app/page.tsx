@@ -1,91 +1,107 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from './page.module.css'
+'use client'
 
-const inter = Inter({ subsets: ['latin'] })
+import axios from "axios"
+import { FormEvent, useState } from "react"
+import { useForm } from "react-hook-form"
+import { ZodError, z } from "zod"
+import { zodResolver } from '@hookform/resolvers/zod'
+import { prisma } from "@/services/prisma"
+
+const schema = z
+  .object({
+    password: z.string().min(6, 'A senha precisa ter pelo menos 6 caracteres'),
+    confirmPassword: z.string(),
+    email: z.string(),
+    name: z.string()
+  })
+  .refine((fields) => fields.password === fields.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'As senhas precisam ser iguais'
+  })
+  .transform((fields) => ({
+    password: fields.password.toLowerCase(),
+    email: fields.email,
+    name: fields.name,
+    confirmPassword: fields.confirmPassword.toLowerCase()
+  }))
+
+type FormProps = z.infer<typeof schema>
 
 export default function Home() {
+
+  const [loading, setLoading] = useState(false)
+
+
+  const example = {
+    password: '33',
+    email: 'www',
+    name: 'eeeee',
+    confirmPassword: '3434'
+  }
+
+  const {
+    handleSubmit,
+    register,
+    formState: { errors }
+  } = useForm<FormProps>({
+    mode: 'all',
+    reValidateMode: 'onChange',
+    resolver: zodResolver(schema)
+  })
+
+
+  async function handleForm(data: FormProps) {
+    setLoading(true)
+
+    try {
+      const response = await axios.post('/api/register', {
+        name: data.name,
+        email: data.email,
+        password: data.password
+      })
+
+      console.log(response)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        console.log(error.flatten())
+      }
+    }
+
+    setLoading(false)
+  }
+
+  //z0JCRMwOZFrI7yOL
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+    <main className="w-full h-screen items-center justify-center flex">
+      <form className="bg-blue-300 flex flex-col gap-2 p-4"
+        onSubmit={handleSubmit(handleForm)}>
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-        <div className={styles.thirteen}>
-          <Image src="/thirteen.svg" alt="13" width={40} height={31} priority />
-        </div>
-      </div>
+        {errors.password?.message}
+        {errors.confirmPassword?.message}
 
-      <div className={styles.grid}>
-        <a
-          href="https://beta.nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+        <input placeholder="nome"
+          {...register('name')}
+          disabled={loading}
+          type="text" />
+        <input placeholder="email"
+          {...register('email')}
+          disabled={loading}
+          type="email" />
+        <input placeholder="senha"
+          {...register('password')}
+          disabled={loading}
+          type="password" />
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>Explore the Next.js 13 playground.</p>
-        </a>
+        <input placeholder="Confirme a senha"
+          {...register('confirmPassword')}
+          disabled={loading}
+          type="password" />
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+        <button type="submit">
+          Enviar
+        </button>
+      </form>
     </main>
   )
 }
