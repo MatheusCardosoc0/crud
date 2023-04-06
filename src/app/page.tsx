@@ -6,17 +6,25 @@ import { useForm } from "react-hook-form"
 import { ZodError, z } from "zod"
 import { zodResolver } from '@hookform/resolvers/zod'
 import { prisma } from "@/services/prisma"
+import Input from "@/components/Input"
 
 const schema = z
   .object({
     password: z.string().min(6, 'A senha precisa ter pelo menos 6 caracteres'),
     confirmPassword: z.string(),
-    email: z.string(),
+    email: z.string()
+    .min(6, 'Digite um email valido')
+    .includes('@', {message: 'O email deve possuir @'})
+    .email(),
     name: z.string()
   })
   .refine((fields) => fields.password === fields.confirmPassword, {
     path: ['confirmPassword'],
     message: 'As senhas precisam ser iguais'
+  })
+  .refine((fields) => fields.name.length > 10, {
+    path: ['name'],
+    message: 'O nome deve ter pelo menos mais de 10 letras'
   })
   .transform((fields) => ({
     password: fields.password.toLowerCase(),
@@ -25,19 +33,11 @@ const schema = z
     confirmPassword: fields.confirmPassword.toLowerCase()
   }))
 
-type FormProps = z.infer<typeof schema>
+export type FormProps = z.infer<typeof schema>
 
 export default function Home() {
 
   const [loading, setLoading] = useState(false)
-
-
-  const example = {
-    password: '33',
-    email: 'www',
-    name: 'eeeee',
-    confirmPassword: '3434'
-  }
 
   const {
     handleSubmit,
@@ -79,11 +79,16 @@ export default function Home() {
 
         {errors.password?.message}
         {errors.confirmPassword?.message}
+        {errors.email?.message}
+        {errors.name?.message}
 
-        <input placeholder="nome"
-          {...register('name')}
+        <Input placeholder="nome"
+          id="password"
           disabled={loading}
-          type="text" />
+          type="text"
+          label="Nome"
+          error={errors.name?.message}
+          register={register} />
         <input placeholder="email"
           {...register('email')}
           disabled={loading}
